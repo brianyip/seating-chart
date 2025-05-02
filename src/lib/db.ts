@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { toast } from 'sonner';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // Types
 export interface TableData {
@@ -10,29 +11,33 @@ export interface TableData {
   y: number;
   width?: number;
   height?: number;
-  seats?: any[]; 
+  seats?: (any[] | number); // Allow both array and number to be compatible with Table type
   [key: string]: any; 
 }
 
 export interface SeatData {
   id: string;
   tableId: string;
-  index: number;
-  guestId: string | null;
-  position?: any; 
-  [key: string]: any; 
+  index?: number; 
+  guestId?: (string | null | undefined); 
+  position?: ({
+    x: number;
+    y: number;
+    rotation: number;
+  } | number); // Allow position to be a number or an object
+  [key: string]: any;
 }
 
 export interface GuestData {
   id: string;
   name: string;
-  [key: string]: any; 
+  [key: string]: any;
 }
 
 export interface ArrangementData {
-  tables: TableData[];
-  seats: SeatData[];
-  guests: GuestData[];
+  tables: (TableData[] | any[]);  // Use any[] to accept both Table[] and TableData[]
+  seats: (SeatData[] | any[]);   // Use any[] to accept both Seat[] and SeatData[]
+  guests: (GuestData[] | any[]);  // Use any[] to accept both Guest[] and GuestData[]
 }
 
 export interface Arrangement {
@@ -47,77 +52,92 @@ export interface Arrangement {
 export const DEFAULT_ARRANGEMENT_NAME = 'Christina + Brian Wedding';
 
 // Get the latest arrangement
-export async function getLatestArrangement(): Promise<Arrangement | null> {
+export const getLatestArrangement = async (): Promise<Arrangement | null> => {
   try {
-    // Get the most recently updated arrangement
     const { data, error } = await supabase
       .from('arrangements')
       .select('*')
       .order('updated_at', { ascending: false })
       .limit(1);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching arrangement:', error);
+      return null;
+    }
     
-    // Return the first (most recent) arrangement or null if none exists
-    return data && data.length > 0 ? data[0] : null;
+    return data && data.length > 0 ? data[0] as Arrangement : null;
   } catch (error) {
-    console.error('Error fetching arrangement:', error);
+    console.error('Error in getLatestArrangement:', error);
     return null;
   }
-}
+};
 
 // Clean up old arrangements, keeping only the most recent 10
-async function cleanupOldArrangements(): Promise<void> {
+export const cleanupOldArrangements = async (): Promise<void> => {
   try {
-    // Get all arrangements ordered by updated_at
     const { data, error } = await supabase
       .from('arrangements')
       .select('id, updated_at')
       .order('updated_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching arrangements for cleanup:', error);
+      return;
+    }
     
-    // If we have more than 10 arrangements, delete the oldest ones
-    if (data && data.length > 10) {
-      const arrangementsToDelete = data.slice(10);
-      const idsToDelete = arrangementsToDelete.map(arr => arr.id);
-      
-      // Delete the oldest arrangements
-      const { error: deleteError } = await supabase
-        .from('arrangements')
-        .delete()
-        .in('id', idsToDelete);
-      
-      if (deleteError) throw deleteError;
-      
-      console.log(`Cleaned up ${idsToDelete.length} old arrangements`);
+    // Keep only the 10 most recent arrangements
+    const arrangementsToDelete = data?.slice(10) || [];
+    
+    if (arrangementsToDelete.length === 0) {
+      return; // Nothing to delete
+    }
+    
+    // Extract IDs to delete
+    const idsToDelete = arrangementsToDelete.map((arr: { id: string }) => arr.id);
+    
+    // Delete old arrangements
+    const { error: deleteError } = await supabase
+      .from('arrangements')
+      .delete()
+      .in('id', idsToDelete);
+    
+    if (deleteError) {
+      console.error('Error deleting old arrangements:', deleteError);
     }
   } catch (error) {
-    console.error('Error cleaning up old arrangements:', error);
+    console.error('Error in cleanupOldArrangements:', error);
   }
-}
+};
 
 // Save arrangement data
-export async function saveArrangement(data: any, silent = false): Promise<boolean> {
+export const saveArrangement = async (data: ArrangementData, silent = false): Promise<boolean> => {
   try {
-    // Get the latest arrangement
-    const latestArrangement = await getLatestArrangement();
+    // First, check if there's an existing arrangement
+    const existingArrangement = await getLatestArrangement();
     
-    if (latestArrangement) {
+    if (existingArrangement) {
       // Update existing arrangement
       const { error } = await supabase
         .from('arrangements')
-        .update({ 
+        .update({
           data,
           updated_at: new Date().toISOString()
         })
-        .eq('id', latestArrangement.id);
+        .eq('id', existingArrangement.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating arrangement:', error);
+        if (!silent) {
+          toast.error('Failed to save arrangement', {
+            description: error.message
+          });
+        }
+        return false;
+      }
       
       if (!silent) {
-        toast.success("Arrangement saved", {
-          description: "Your seating arrangement has been saved to the cloud."
+        toast.success('Arrangement saved', {
+          description: 'Your seating arrangement has been updated.'
         });
       }
     } else {
@@ -126,29 +146,39 @@ export async function saveArrangement(data: any, silent = false): Promise<boolea
         .from('arrangements')
         .insert({
           name: DEFAULT_ARRANGEMENT_NAME,
-          data
+          data,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating arrangement:', error);
+        if (!silent) {
+          toast.error('Failed to save arrangement', {
+            description: error.message
+          });
+        }
+        return false;
+      }
       
       if (!silent) {
-        toast.success("Arrangement created", {
-          description: "Your seating arrangement has been saved to the cloud."
+        toast.success('Arrangement created', {
+          description: 'Your seating arrangement has been saved.'
         });
       }
     }
     
-    // Clean up old arrangements after saving
+    // Clean up old arrangements
     await cleanupOldArrangements();
     
     return true;
   } catch (error) {
-    console.error('Error saving arrangement:', error);
+    console.error('Error in saveArrangement:', error);
     if (!silent) {
-      toast.error("Error saving arrangement", {
-        description: "There was a problem saving your seating arrangement."
+      toast.error('Failed to save arrangement', {
+        description: 'An unexpected error occurred.'
       });
     }
     return false;
   }
-}
+};

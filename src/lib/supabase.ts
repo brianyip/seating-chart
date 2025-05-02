@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Use a dynamic import approach to ensure this only runs on the client side
-let supabase;
+let supabase: SupabaseClient;
 
 // Only initialize the client on the client side
 if (typeof window !== 'undefined') {
@@ -13,12 +13,11 @@ if (typeof window !== 'undefined') {
   } else {
     console.error('Supabase credentials not available');
     // Provide a dummy client that does nothing
-    supabase = {
-      from: () => ({
-        select: () => ({ data: null, error: null }),
-      }),
-    };
+    supabase = {} as SupabaseClient;
   }
+} else {
+  // Server-side - provide a dummy client
+  supabase = {} as SupabaseClient;
 }
 
 export { supabase };
