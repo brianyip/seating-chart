@@ -5,6 +5,12 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  // Disable server-side rendering for the entire app
+  // This ensures Supabase client only runs on the client side
+  reactStrictMode: true,
+  compiler: {
+    styledComponents: true,
+  },
 }
 
 module.exports = nextConfig

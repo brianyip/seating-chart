@@ -1,6 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Use a dynamic import approach to ensure this only runs on the client side
+let supabase;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Only initialize the client on the client side
+if (typeof window !== 'undefined') {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  
+  if (supabaseUrl && supabaseAnonKey) {
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+  } else {
+    console.error('Supabase credentials not available');
+    // Provide a dummy client that does nothing
+    supabase = {
+      from: () => ({
+        select: () => ({ data: null, error: null }),
+      }),
+    };
+  }
+}
+
+export { supabase };

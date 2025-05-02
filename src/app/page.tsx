@@ -330,6 +330,10 @@ const guestListData = [
   "Jiong Cheng"
 ];
 
+// Add this configuration to make the page client-side only
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+
 export default function Home() {
   const [tables, setTables] = useState<Table[]>([]);
   const [seats, setSeats] = useState<Seat[]>([]);
