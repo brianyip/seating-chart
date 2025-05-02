@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -405,7 +405,7 @@ export default function Home() {
   };
   
   // Handle auto-save with indicator
-  const handleAutoSave = async () => {
+  const handleAutoSave = useCallback(async () => {
     // Only save if there are tables
     if (tables.length === 0) return;
     
@@ -431,7 +431,7 @@ export default function Home() {
     }
     
     setIsAutoSaving(false);
-  };
+  }, [tables, seats, guests]);
 
   // Auto-save to Supabase every 30 seconds if there are changes
   useEffect(() => {
