@@ -395,18 +395,14 @@ export default function Home() {
     loadArrangement();
   }, []);
 
-  // Auto-save to Supabase every 30 seconds if there are changes
-  useEffect(() => {
-    // Skip the first render
-    if (tables.length === 0 && seats.length === 0) return;
-    
-    const autoSaveInterval = setInterval(() => {
-      handleAutoSave();
-    }, 30000); // 30 seconds
-    
-    return () => clearInterval(autoSaveInterval);
-  }, [tables, seats, guests]);
-
+  // Initialize guest list
+  const initializeGuestList = () => {
+    const initialGuests = guestListData.map((name, index) => {
+      return { id: `guest-${index}`, name };
+    });
+    setGuests(initialGuests);
+  };
+  
   // Handle auto-save with indicator
   const handleAutoSave = async () => {
     // Only save if there are tables
@@ -435,15 +431,19 @@ export default function Home() {
     
     setIsAutoSaving(false);
   };
-  
-  // Initialize guest list
-  const initializeGuestList = () => {
-    const initialGuests = guestListData.map((name, index) => {
-      return { id: `guest-${index}`, name };
-    });
-    setGuests(initialGuests);
-  };
-  
+
+  // Auto-save to Supabase every 30 seconds if there are changes
+  useEffect(() => {
+    // Skip the first render
+    if (tables.length === 0 && seats.length === 0) return;
+    
+    const autoSaveInterval = setInterval(() => {
+      handleAutoSave();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(autoSaveInterval);
+  }, [tables, seats, guests, handleAutoSave]);
+
   // Save the current arrangement (manual save)
   const handleSaveArrangement = async () => {
     const data = {

@@ -2,10 +2,37 @@ import { supabase } from './supabase';
 import { toast } from 'sonner';
 
 // Types
+export interface TableData {
+  id: string;
+  name: string;
+  type: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  seats?: any[]; 
+  [key: string]: any; 
+}
+
+export interface SeatData {
+  id: string;
+  tableId: string;
+  index: number;
+  guestId: string | null;
+  position?: any; 
+  [key: string]: any; 
+}
+
+export interface GuestData {
+  id: string;
+  name: string;
+  [key: string]: any; 
+}
+
 export interface ArrangementData {
-  tables: any[];
-  seats: any[];
-  guests: any[];
+  tables: TableData[];
+  seats: SeatData[];
+  guests: GuestData[];
 }
 
 export interface Arrangement {
@@ -71,7 +98,7 @@ async function cleanupOldArrangements(): Promise<void> {
 }
 
 // Save arrangement data
-export async function saveArrangement(data: ArrangementData, silent = false): Promise<boolean> {
+export async function saveArrangement(data: any, silent = false): Promise<boolean> {
   try {
     // Get the latest arrangement
     const latestArrangement = await getLatestArrangement();
@@ -99,9 +126,7 @@ export async function saveArrangement(data: ArrangementData, silent = false): Pr
         .from('arrangements')
         .insert({
           name: DEFAULT_ARRANGEMENT_NAME,
-          data,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          data
         });
       
       if (error) throw error;
