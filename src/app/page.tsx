@@ -354,9 +354,10 @@ export default function Home() {
       const arrangement = await getLatestArrangement();
       
       if (arrangement) {
-        setTables(arrangement.data.tables);
-        setSeats(arrangement.data.seats);
-        setGuests(arrangement.data.guests);
+        // Cast through unknown to satisfy TypeScript
+        setTables(arrangement.data.tables as unknown as Table[]);
+        setSeats(arrangement.data.seats as unknown as Seat[]);
+        setGuests(arrangement.data.guests as unknown as Guest[]);
         setLastSaved(new Date(arrangement.updated_at));
         toast.success("Arrangement loaded", {
           description: "The seating arrangement has been loaded."
