@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -13,8 +13,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
   Save,
-  Upload,
-  AlertCircle,
   Lock,
   Unlock,
   Search
@@ -58,7 +56,6 @@ interface Table {
 // Generate positions for seats around a circular table
 const generateCircularSeatPositions = (seats: number, tableRadius: number = 50) => {
   const positions = [];
-  const seatWidth = 24;
   const seatDistance = tableRadius + 15; // Increased distance for better spacing
   const badgeDistance = tableRadius + 30; // Distance for badges from center
   
@@ -91,8 +88,6 @@ const generateCircularSeatPositions = (seats: number, tableRadius: number = 50) 
 // Generate positions for seats around a rectangular table
 const generateRectangularSeatPositions = (seats: number, width: number = 80, height: number = 160) => {
   const positions = [];
-  const seatWidth = 24;
-  const seatHeight = 24;
   
   // Calculate how many seats on each side
   // For a rectangular table, we'll place seats on the long sides
@@ -101,7 +96,6 @@ const generateRectangularSeatPositions = (seats: number, width: number = 80, hei
   
   // Calculate spacing between seats on each side
   const longSideLength = height;
-  const shortSideLength = width;
   
   const longSideSpacing = longSideLength / (seatsPerSide + 1);
   
@@ -340,7 +334,6 @@ export default function Home() {
   const [editingTable, setEditingTable] = useState<Table | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [guests, setGuests] = useState<Guest[]>([]);
-  const [draggingGuestId, setDraggingGuestId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [currentTable, setCurrentTable] = useState<string | null>(null);
   const [highlightedSeatId, setHighlightedSeatId] = useState<string | null>(null);
@@ -510,11 +503,10 @@ export default function Home() {
         setSeats([...seats, ...newSeats]);
       } else if (editingTable.seats < currentTableSeats.length) {
         // Remove excess seats and unassign any guests
-        const seatsToKeep = currentTableSeats.slice(0, editingTable.seats);
-        const seatsToRemove = currentTableSeats.slice(editingTable.seats);
-        
         // Get IDs of seats to remove
-        const seatIdsToRemove = new Set(seatsToRemove.map(seat => seat.id));
+        const seatIdsToRemove = new Set(
+          currentTableSeats.slice(editingTable.seats).map(seat => seat.id)
+        );
         
         // Update seats array to remove the excess seats
         setSeats(seats.filter(seat => !seatIdsToRemove.has(seat.id)));
@@ -555,12 +547,10 @@ export default function Home() {
   // Handle guest drag start
   const handleGuestDragStart = (e: React.DragEvent, guestId: string) => {
     e.dataTransfer.setData('text/plain', guestId);
-    setDraggingGuestId(guestId);
   };
 
   // Handle guest drag end
   const handleGuestDragEnd = () => {
-    setDraggingGuestId(null);
   };
 
   // Handle seat drag over
