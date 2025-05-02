@@ -15,7 +15,8 @@ import {
   Save,
   Lock,
   Unlock,
-  Search
+  Search,
+  Loader2
 } from "lucide-react";
 import {
   Tooltip,
@@ -24,6 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { getLatestArrangement, saveArrangement } from '@/lib/db';
 
 // Define the Guest type
 interface Guest {
@@ -339,38 +341,102 @@ export default function Home() {
   const [highlightedSeatId, setHighlightedSeatId] = useState<string | null>(null);
   const [tablesLocked, setTablesLocked] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   
-  // Initialize guest list from data
+  // Initialize guest list from data or load from Supabase
   useEffect(() => {
-    // Load saved data if available
-    const savedData = localStorage.getItem('weddingSeatingArrangement');
-    
-    if (savedData) {
-      try {
-        const { tables: savedTables, seats: savedSeats, guests: savedGuests } = JSON.parse(savedData);
-        setTables(savedTables);
-        setSeats(savedSeats);
+    // Load the arrangement from Supabase
+    const loadArrangement = async () => {
+      setIsLoading(true);
+      const arrangement = await getLatestArrangement();
+      
+      if (arrangement) {
+        setTables(arrangement.data.tables);
+        setSeats(arrangement.data.seats);
+        setGuests(arrangement.data.guests);
+        setLastSaved(new Date(arrangement.updated_at));
+        toast.success("Arrangement loaded", {
+          description: "The seating arrangement has been loaded."
+        });
+      } else {
+        // Load saved data if available (fallback to localStorage)
+        const savedData = localStorage.getItem('weddingSeatingArrangement');
         
-        // Merge saved guests with the original guest list
-        const savedGuestIds = new Set(savedGuests.map((g: Guest) => g.id));
-        
-        // Create the initial guest list, excluding any that are already in the saved list
-        const initialGuests = guestListData.map((name, index) => {
-          const id = `guest-${index}`;
-          return { id, name };
-        }).filter(g => !savedGuestIds.has(g.id));
-        
-        setGuests([...savedGuests, ...initialGuests]);
-      } catch (error) {
-        console.error("Error loading saved data:", error);
-        initializeGuestList();
+        if (savedData) {
+          try {
+            const { tables: savedTables, seats: savedSeats, guests: savedGuests } = JSON.parse(savedData);
+            setTables(savedTables);
+            setSeats(savedSeats);
+            
+            // Merge saved guests with the original guest list
+            const savedGuestIds = new Set(savedGuests.map((g: Guest) => g.id));
+            
+            // Create the initial guest list, excluding any that are already in the saved list
+            const initialGuests = guestListData.map((name, index) => {
+              const id = `guest-${index}`;
+              return { id, name };
+            }).filter(g => !savedGuestIds.has(g.id));
+            
+            setGuests([...savedGuests, ...initialGuests]);
+          } catch (error) {
+            console.error("Error loading saved data:", error);
+            initializeGuestList();
+          }
+        } else {
+          initializeGuestList();
+        }
       }
-    } else {
-      initializeGuestList();
-    }
+      setIsLoading(false);
+    };
+    
+    loadArrangement();
   }, []);
+
+  // Auto-save to Supabase every 30 seconds if there are changes
+  useEffect(() => {
+    // Skip the first render
+    if (tables.length === 0 && seats.length === 0) return;
+    
+    const autoSaveInterval = setInterval(() => {
+      handleAutoSave();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(autoSaveInterval);
+  }, [tables, seats, guests]);
+
+  // Handle auto-save with indicator
+  const handleAutoSave = async () => {
+    // Only save if there are tables
+    if (tables.length === 0) return;
+    
+    setIsAutoSaving(true);
+    const data = {
+      tables,
+      seats,
+      guests
+    };
+    
+    // Save to localStorage as a backup
+    try {
+      localStorage.setItem('weddingSeatingArrangement', JSON.stringify(data));
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+    }
+    
+    // Save to Supabase
+    const success = await saveArrangement(data, true);
+    
+    if (success) {
+      setLastSaved(new Date());
+    }
+    
+    setIsAutoSaving(false);
+  };
   
+  // Initialize guest list
   const initializeGuestList = () => {
     const initialGuests = guestListData.map((name, index) => {
       return { id: `guest-${index}`, name };
@@ -378,27 +444,33 @@ export default function Home() {
     setGuests(initialGuests);
   };
   
-  // Save the current arrangement
-  const saveArrangement = () => {
-    const dataToSave = {
+  // Save the current arrangement (manual save)
+  const handleSaveArrangement = async () => {
+    const data = {
       tables,
       seats,
       guests
     };
     
+    // Also save to localStorage as a backup
     try {
-      localStorage.setItem('weddingSeatingArrangement', JSON.stringify(dataToSave));
-      toast.success("Arrangement saved", {
-        description: "Your seating arrangement has been saved successfully."
-      });
+      localStorage.setItem('weddingSeatingArrangement', JSON.stringify(data));
     } catch (error) {
-      toast.error("Error saving arrangement", {
-        description: "There was a problem saving your seating arrangement."
-      });
-      console.error("Error saving data:", error);
+      console.error("Error saving to localStorage:", error);
+    }
+    
+    // Only save to Supabase if there are tables
+    if (tables.length > 0) {
+      setIsLoading(true);
+      const success = await saveArrangement(data, false);
+      setIsLoading(false);
+      
+      if (success) {
+        setLastSaved(new Date());
+      }
     }
   };
-  
+
   // Add a new circular table
   const addCircleTable = () => {
     const newTableId = `table-${Date.now()}`;
@@ -777,16 +849,29 @@ export default function Home() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" onClick={saveArrangement}>
-                        <Save className="h-4 w-4 mr-2" />
+                      <Button variant="outline" onClick={handleSaveArrangement} disabled={isLoading}>
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
                         Save
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Save your seating arrangement</p>
+                      {lastSaved && (
+                        <p className="text-xs text-gray-500">Last saved: {lastSaved.toLocaleTimeString()}</p>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                {isAutoSaving && (
+                  <div className="flex items-center text-xs text-gray-500">
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Saving...
+                  </div>
+                )}
                 <Button variant="outline" onClick={handleClearAll}>Clear Guests</Button>
               </div>
             </div>
@@ -1041,6 +1126,7 @@ export default function Home() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <div className="sonner-toast-container"></div>
     </div>
   );
