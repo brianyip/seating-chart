@@ -355,19 +355,60 @@ export default function Home() {
     // Load the arrangement from Supabase
     const loadArrangement = async () => {
       setIsLoading(true);
-      const arrangement = await getLatestArrangement();
-      
-      if (arrangement) {
-        // Cast through unknown to satisfy TypeScript
-        setTables(arrangement.data.tables as unknown as Table[]);
-        setSeats(arrangement.data.seats as unknown as Seat[]);
-        setGuests(arrangement.data.guests as unknown as Guest[]);
-        setLastSaved(new Date(arrangement.updated_at));
-        toast.success("Arrangement loaded", {
-          description: "The seating arrangement has been loaded."
-        });
-      } else {
-        // Load saved data if available (fallback to localStorage)
+      try {
+        const arrangement = await getLatestArrangement();
+        
+        if (arrangement) {
+          // Cast through unknown to satisfy TypeScript
+          setTables(arrangement.data.tables as unknown as Table[]);
+          setSeats(arrangement.data.seats as unknown as Seat[]);
+          setGuests(arrangement.data.guests as unknown as Guest[]);
+          setLastSaved(new Date(arrangement.updated_at));
+          toast.success("Arrangement loaded", {
+            description: "The seating arrangement has been loaded from the cloud."
+          });
+        } else {
+          console.log("No arrangement found in Supabase, checking localStorage...");
+          // Load saved data if available (fallback to localStorage)
+          const savedData = localStorage.getItem('weddingSeatingArrangement');
+          
+          if (savedData) {
+            try {
+              const { tables: savedTables, seats: savedSeats, guests: savedGuests } = JSON.parse(savedData);
+              setTables(savedTables);
+              setSeats(savedSeats);
+              
+              // Merge saved guests with the original guest list
+              const savedGuestIds = new Set(savedGuests.map((g: Guest) => g.id));
+              
+              // Create the initial guest list, excluding any that are already in the saved list
+              const initialGuests = guestListData.map((name, index) => {
+                const id = `guest-${index}`;
+                return { id, name };
+              }).filter(g => !savedGuestIds.has(g.id));
+              
+              setGuests([...savedGuests, ...initialGuests]);
+              toast.info("Using local data", {
+                description: "Loaded from browser storage. Changes will sync to the cloud."
+              });
+            } catch (error) {
+              console.error("Error loading saved data:", error);
+              initializeGuestList();
+              toast.error("Error loading saved data", {
+                description: "Starting with a fresh seating arrangement."
+              });
+            }
+          } else {
+            console.log("No localStorage data found, initializing fresh guest list");
+            initializeGuestList();
+            toast.info("Started new arrangement", {
+              description: "No previous arrangement found. Changes will be saved to the cloud."
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error in loadArrangement:", error);
+        // Fallback to localStorage if Supabase fails
         const savedData = localStorage.getItem('weddingSeatingArrangement');
         
         if (savedData) {
@@ -386,15 +427,25 @@ export default function Home() {
             }).filter(g => !savedGuestIds.has(g.id));
             
             setGuests([...savedGuests, ...initialGuests]);
+            toast.warning("Cloud connection failed", {
+              description: "Using local data. Check your internet connection."
+            });
           } catch (error) {
             console.error("Error loading saved data:", error);
             initializeGuestList();
+            toast.error("Error loading data", {
+              description: "Starting with a fresh seating arrangement."
+            });
           }
         } else {
           initializeGuestList();
+          toast.error("Cloud connection failed", {
+            description: "Starting with a fresh seating arrangement."
+          });
         }
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     
     loadArrangement();
