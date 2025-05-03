@@ -861,9 +861,9 @@ export default function Home() {
   const alert = useAlertNotification();
 
   return (
-    <div className="min-h-screen p-4 flex">
+    <div className="min-h-screen p-4 grid grid-cols-1 md:grid-cols-[300px_1fr] lg:grid-cols-[320px_1fr] gap-4">
       {/* Guest List Sidebar */}
-      <div className="w-64 mr-4 flex flex-col">
+      <div className="w-full flex flex-col">
         <Card className="flex-1">
           <CardHeader className="pb-3">
             <CardTitle>Guest List</CardTitle>
@@ -882,7 +882,7 @@ export default function Home() {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[calc(100vh-200px)]">
+            <ScrollArea className="h-[calc(100vh-250px)] md:h-[calc(100vh-200px)]">
               <div className="space-y-2">
                 {filteredUnassignedGuests.length > 0 ? (
                   filteredUnassignedGuests.map(guest => (
@@ -908,19 +908,19 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 space-y-6 flex flex-col">
+      <main className="w-full space-y-6 flex flex-col">
         <Card className="flex-1 flex flex-col">
           <CardHeader>
             <CardTitle>Christina + Brian Wedding</CardTitle>
             <CardDescription>Drag and drop tables and guests to seats.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col">
-            <div className="flex justify-between mb-4">
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-4">
+              <div className="flex flex-wrap gap-2">
                 <Button onClick={addCircleTable}>Add Circle Table</Button>
                 <Button onClick={addRectangleTable}>Add Rectangle Table</Button>
               </div>
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-wrap gap-2 items-center">
                 <div className="flex items-center space-x-2 mr-2">
                   <Switch 
                     id="lock-tables" 
@@ -935,53 +935,55 @@ export default function Home() {
                     {tablesLocked ? "Tables Locked" : "Tables Unlocked"}
                   </Label>
                 </div>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" onClick={handleSaveArrangement} disabled={isLoading}>
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
+                <div className="flex flex-wrap gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" onClick={handleSaveArrangement} disabled={isLoading}>
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Save
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Save your seating arrangement</p>
+                        {lastSaved && (
+                          <p className="text-xs text-gray-500">Last saved: {lastSaved.toLocaleTimeString()}</p>
                         )}
-                        Save
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Save your seating arrangement</p>
-                      {lastSaved && (
-                        <p className="text-xs text-gray-500">Last saved: {lastSaved.toLocaleTimeString()}</p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" onClick={forceRefreshArrangement} disabled={isLoading}>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Refresh
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Refresh the seating arrangement from the cloud</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                {isAutoSaving && (
-                  <div className="flex items-center text-xs text-gray-500">
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Saving...
-                  </div>
-                )}
-                <Button variant="outline" onClick={handleClearAll}>Clear Guests</Button>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" onClick={forceRefreshArrangement} disabled={isLoading}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Refresh the seating arrangement from the cloud</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  {isAutoSaving && (
+                    <div className="flex items-center text-xs text-gray-500">
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Saving...
+                    </div>
+                  )}
+                  <Button variant="outline" onClick={handleClearAll}>Clear Guests</Button>
+                </div>
               </div>
             </div>
             
             {/* Canvas for dragging tables */}
             <div 
               ref={canvasRef}
-              className="relative flex-1 border border-gray-200 rounded-lg bg-gray-50"
+              className="relative flex-1 border border-gray-200 rounded-lg bg-gray-50 min-h-[50vh] md:min-h-[60vh]"
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
             >
