@@ -45,6 +45,7 @@ export interface Arrangement {
   name: string;
   created_at: string;
   updated_at: string;
+  version?: number; // Add version for conflict resolution
   data: ArrangementData;
 }
 
@@ -147,6 +148,7 @@ export const saveArrangement = async (data: ArrangementData, silent = false): Pr
         .insert({
           name: DEFAULT_ARRANGEMENT_NAME,
           data,
+          version: 1, // Initialize version
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -180,5 +182,77 @@ export const saveArrangement = async (data: ArrangementData, silent = false): Pr
       });
     }
     return false;
+  }
+};
+
+// Save arrangement with version control for conflict resolution
+export const saveArrangementWithVersion = async (
+  data: ArrangementData,
+  arrangementId: string,
+  currentVersion: number,
+  silent = false
+): Promise<{ success: boolean; conflict: boolean; latestArrangement: Arrangement | null }> => {
+  try {
+    // Update with version check
+    const { error } = await supabase
+      .from('arrangements')
+      .update({
+        data,
+        version: currentVersion + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', arrangementId)
+      .eq('version', currentVersion); // Only update if version matches
+    
+    if (error) {
+      console.error('Error updating arrangement:', error);
+      
+      // Check if it's a conflict (version mismatch)
+      const latestArrangement = await getLatestArrangement();
+      const isConflict = latestArrangement?.version !== currentVersion;
+      
+      if (!silent && isConflict) {
+        toast.error('Update conflict', {
+          description: 'Someone else updated the seating chart. Refreshing with latest data.'
+        });
+      } else if (!silent) {
+        toast.error('Failed to save arrangement', {
+          description: error.message
+        });
+      }
+      
+      return { 
+        success: false, 
+        conflict: isConflict, 
+        latestArrangement 
+      };
+    }
+    
+    if (!silent) {
+      toast.success('Arrangement saved', {
+        description: 'Your seating arrangement has been updated.'
+      });
+    }
+    
+    // Get the updated arrangement
+    const updatedArrangement = await getLatestArrangement();
+    
+    return { 
+      success: true, 
+      conflict: false, 
+      latestArrangement: updatedArrangement 
+    };
+  } catch (error) {
+    console.error('Error in saveArrangementWithVersion:', error);
+    if (!silent) {
+      toast.error('Failed to save arrangement', {
+        description: 'An unexpected error occurred.'
+      });
+    }
+    return { 
+      success: false, 
+      conflict: false, 
+      latestArrangement: null 
+    };
   }
 };

@@ -120,3 +120,41 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom styles for toast notifications */
+[data-sonner-toast] {
+  @apply rounded-lg border border-border shadow-lg;
+}
+
+[data-sonner-toast][data-type="success"] {
+  @apply border-green-200 dark:border-green-800;
+}
+
+[data-sonner-toast][data-type="error"] {
+  @apply border-red-200 dark:border-red-800;
+}
+
+[data-sonner-toast][data-type="info"] {
+  @apply border-blue-200 dark:border-blue-800;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  @apply border-yellow-200 dark:border-yellow-800;
+}
+
+/* Style for close button */
+[data-sonner-toast] [data-close-button] {
+  @apply opacity-70 hover:opacity-100 transition-opacity;
+  @apply bg-muted/50 hover:bg-muted p-1 rounded-md;
+  @apply absolute right-2 top-2 z-10;
+}
+
+/* Ensure the close button is visible and properly positioned */
+[data-sonner-toast] [data-close-button] svg {
+  @apply w-4 h-4;
+}
+
+/* Add some padding to accommodate the close button */
+[data-sonner-toast] [data-content] {
+  @apply pr-8;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useAlertNotification } from "@/components/ui/alert-notification";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,7 +17,8 @@ import {
   Lock,
   Unlock,
   Search,
-  Loader2
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import {
   Tooltip,
@@ -24,7 +26,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { toast } from "sonner";
 import { getLatestArrangement, saveArrangement } from '@/lib/db';
 
 // Define the Guest type
@@ -56,10 +57,10 @@ interface Table {
 }
 
 // Generate positions for seats around a circular table
-const generateCircularSeatPositions = (seats: number, tableRadius: number = 50) => {
+const generateCircularSeatPositions = (seats: number, tableRadius: number = 40) => {
   const positions = [];
-  const seatDistance = tableRadius + 15; // Increased distance for better spacing
-  const badgeDistance = tableRadius + 30; // Distance for badges from center
+  const seatDistance = tableRadius + 12; // Reduced distance for better spacing
+  const badgeDistance = tableRadius + 24; // Reduced distance for badges from center
   
   for (let i = 0; i < seats; i++) {
     const angle = (i * 2 * Math.PI) / seats;
@@ -88,7 +89,7 @@ const generateCircularSeatPositions = (seats: number, tableRadius: number = 50) 
 };
 
 // Generate positions for seats around a rectangular table
-const generateRectangularSeatPositions = (seats: number, width: number = 80, height: number = 160) => {
+const generateRectangularSeatPositions = (seats: number, width: number = 70, height: number = 140) => {
   const positions = [];
   
   // Calculate how many seats on each side
@@ -110,7 +111,7 @@ const generateRectangularSeatPositions = (seats: number, width: number = 80, hei
       y, 
       rotation: 90, // Point toward table
       position: i,
-      badgeOffset: { x: -20, y: 0 } // Badge offset for left side
+      badgeOffset: { x: -15, y: 0 } // Badge offset for left side
     });
   }
   
@@ -123,7 +124,7 @@ const generateRectangularSeatPositions = (seats: number, width: number = 80, hei
       y, 
       rotation: 270, // Point toward table
       position: seatsPerSide + i,
-      badgeOffset: { x: 20, y: 0 } // Badge offset for right side
+      badgeOffset: { x: 15, y: 0 } // Badge offset for right side
     });
   }
   
@@ -343,7 +344,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [currentTable, setCurrentTable] = useState<string | null>(null);
   const [highlightedSeatId, setHighlightedSeatId] = useState<string | null>(null);
-  const [tablesLocked, setTablesLocked] = useState(false);
+  const [tablesLocked, setTablesLocked] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -364,9 +365,7 @@ export default function Home() {
           setSeats(arrangement.data.seats as unknown as Seat[]);
           setGuests(arrangement.data.guests as unknown as Guest[]);
           setLastSaved(new Date(arrangement.updated_at));
-          toast.success("Arrangement loaded", {
-            description: "The seating arrangement has been loaded from the cloud."
-          });
+          alert.success("Arrangement loaded", "The seating arrangement has been loaded from the cloud.");
         } else {
           console.log("No arrangement found in Supabase, checking localStorage...");
           // Load saved data if available (fallback to localStorage)
@@ -388,22 +387,16 @@ export default function Home() {
               }).filter(g => !savedGuestIds.has(g.id));
               
               setGuests([...savedGuests, ...initialGuests]);
-              toast.info("Using local data", {
-                description: "Loaded from browser storage. Changes will sync to the cloud."
-              });
+              alert.info("Using local data", "Loaded from browser storage. Changes will sync to the cloud.");
             } catch (error) {
               console.error("Error loading saved data:", error);
               initializeGuestList();
-              toast.error("Error loading saved data", {
-                description: "Starting with a fresh seating arrangement."
-              });
+              alert.error("Error loading saved data", "Starting with a fresh seating arrangement.");
             }
           } else {
             console.log("No localStorage data found, initializing fresh guest list");
             initializeGuestList();
-            toast.info("Started new arrangement", {
-              description: "No previous arrangement found. Changes will be saved to the cloud."
-            });
+            alert.info("Started new arrangement", "No previous arrangement found. Changes will be saved to the cloud.");
           }
         }
       } catch (error) {
@@ -427,21 +420,15 @@ export default function Home() {
             }).filter(g => !savedGuestIds.has(g.id));
             
             setGuests([...savedGuests, ...initialGuests]);
-            toast.warning("Cloud connection failed", {
-              description: "Using local data. Check your internet connection."
-            });
+            alert.warning("Cloud connection failed", "Using local data. Check your internet connection.");
           } catch (error) {
             console.error("Error loading saved data:", error);
             initializeGuestList();
-            toast.error("Error loading data", {
-              description: "Starting with a fresh seating arrangement."
-            });
+            alert.error("Error loading data", "Starting with a fresh seating arrangement.");
           }
         } else {
           initializeGuestList();
-          toast.error("Cloud connection failed", {
-            description: "Starting with a fresh seating arrangement."
-          });
+          alert.error("Cloud connection failed", "Starting with a fresh seating arrangement.");
         }
       } finally {
         setIsLoading(false);
@@ -527,15 +514,50 @@ export default function Home() {
     }
   };
 
+  // Force refresh the arrangement from Supabase
+  const forceRefreshArrangement = async () => {
+    try {
+      setIsLoading(true);
+      // Check if there are unsaved changes
+      const hasChanges = localStorage.getItem('seatingArrangement') !== null;
+      
+      if (hasChanges) {
+        // Confirm with the user if they want to discard changes
+        if (!window.confirm("You have unsaved changes. Refreshing will discard these changes. Continue?")) {
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      const arrangement = await getLatestArrangement();
+      
+      if (arrangement) {
+        console.log("Arrangement force refreshed from Supabase:", arrangement);
+        setTables(arrangement.data.tables as unknown as Table[]);
+        setSeats(arrangement.data.seats as unknown as Seat[]);
+        setGuests(arrangement.data.guests as unknown as Guest[]);
+        setLastSaved(new Date(arrangement.updated_at));
+        alert.success("Arrangement refreshed", "The latest version has been loaded from the cloud.");
+      } else {
+        alert.warning("No arrangement found", "Could not find any saved arrangement in the cloud.");
+      }
+    } catch (error) {
+      console.error("Error refreshing arrangement:", error);
+      alert.error("Refresh failed", "Could not load the latest version from the cloud.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Add a new circular table
   const addCircleTable = () => {
     const newTableId = `table-${Date.now()}`;
     const newTable: Table = {
       id: newTableId,
-      x: 100,
-      y: 100,
+      x: 300,
+      y: 300,
       name: `Table ${tables.length + 1}`,
-      seats: 12,
+      seats: 10,
       type: "circle"
     };
     
@@ -558,10 +580,10 @@ export default function Home() {
       x: 100,
       y: 100,
       name: `Table ${tables.length + 1}`,
-      seats: 12,
+      seats: 8,
       type: "rectangle",
-      width: 80,
-      height: 160
+      width: 70,
+      height: 105
     };
     
     // Create seats for the new table
@@ -590,8 +612,26 @@ export default function Home() {
     if (!isDragging || !currentTable || !canvasRef.current) return;
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - canvasRect.left;
-    const y = e.clientY - canvasRect.top;
+    let x = e.clientX - canvasRect.left;
+    let y = e.clientY - canvasRect.top;
+    
+    // Get current table dimensions
+    const tableObj = tables.find(t => t.id === currentTable);
+    if (!tableObj) return;
+    
+    // Calculate table radius/dimensions for boundary constraints
+    const tableRadius = tableObj.type === "circle" 
+      ? 40  // Default radius for circle tables
+      : Math.max((tableObj.width || 70) / 2, (tableObj.height || 140) / 2);
+    
+    // Apply boundary constraints
+    const padding = tableRadius + 20; // Extra padding to keep tables fully visible
+    
+    // Constrain x within the canvas boundaries
+    x = Math.max(padding, Math.min(canvasRect.width - padding, x));
+    
+    // Constrain y within the canvas boundaries
+    y = Math.max(padding, Math.min(canvasRect.height - padding, y));
     
     setTables(tables.map(table => 
       table.id === currentTable 
@@ -667,9 +707,7 @@ export default function Home() {
     setIsDialogOpen(false);
     
     // Show a toast notification
-    toast.info("Table deleted", {
-      description: `Table and ${tableSeats.length} seats have been removed`
-    });
+    alert.info("Table deleted", `Table and ${tableSeats.length} seats have been removed`);
   };
 
   // Handle guest drag start
@@ -734,9 +772,7 @@ export default function Home() {
           const movingGuest = guests.find(g => g.id === guestId);
           const displacedGuest = guests.find(g => g.id === targetGuestId);
           if (movingGuest && displacedGuest) {
-            toast.success(`Guests swapped`, {
-              description: `${movingGuest.name} and ${displacedGuest.name} have swapped seats`
-            });
+            alert.success(`Guests swapped`, `${movingGuest.name} and ${displacedGuest.name} have swapped seats`);
           }
         } else {
           // No guest at target: Just remove from current seat
@@ -756,13 +792,9 @@ export default function Home() {
       const guest = guests.find(g => g.id === guestId);
       if (guest) {
         if (currentSeat) {
-          toast.success(`${guest.name} moved`, {
-            description: "Guest has been moved to a new seat"
-          });
+          alert.success(`${guest.name} moved`, "Guest has been moved to a new seat");
         } else {
-          toast.success(`${guest.name} seated`, {
-            description: "Guest has been assigned to a seat"
-          });
+          alert.success(`${guest.name} seated`, "Guest has been assigned to a seat");
         }
       }
     }
@@ -802,9 +834,7 @@ export default function Home() {
     setSeats(updatedSeats);
     
     // Show a toast notification
-    toast.info("All guests unassigned", {
-      description: "All guests have been returned to the unassigned list"
-    });
+    alert.info("All guests unassigned", "All guests have been returned to the unassigned list");
   };
 
   // Add event listeners for mouse up outside the canvas
@@ -826,6 +856,9 @@ export default function Home() {
   const getFirstName = (fullName: string) => {
     return fullName.split(' ')[0];
   };
+
+  // Use our new alert notification system
+  const alert = useAlertNotification();
 
   return (
     <div className="min-h-screen p-4 flex">
@@ -922,6 +955,19 @@ export default function Home() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" onClick={forceRefreshArrangement} disabled={isLoading}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Refresh the seating arrangement from the cloud</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {isAutoSaving && (
                   <div className="flex items-center text-xs text-gray-500">
                     <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -945,8 +991,8 @@ export default function Home() {
                   ? generateCircularSeatPositions(table.seats)
                   : generateRectangularSeatPositions(
                       table.seats, 
-                      table.width || 80, 
-                      table.height || 160
+                      table.width || 70, 
+                      table.height || 140
                     );
                 
                 return (
@@ -1003,17 +1049,17 @@ export default function Home() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Badge 
-                                      className="text-sm px-3 py-1 font-medium cursor-move" 
+                                      className="text-xs px-2 py-0.5 font-medium cursor-move" 
                                       style={{
                                         backgroundColor: '#fbcfe8',
                                         color: 'rgba(0, 0, 0, 0.8)',
                                         border: '1px solid rgba(0, 0, 0, 0.1)',
-                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                                        minWidth: '60px',
+                                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                        minWidth: '50px',
                                         textAlign: 'center',
                                         display: 'inline-block',
-                                        fontSize: '12px',
-                                        padding: '2px 6px'
+                                        fontSize: '10px',
+                                        padding: '1px 4px'
                                       }}
                                     >
                                       {getFirstName(guest.name)}
@@ -1030,13 +1076,13 @@ export default function Home() {
                             <div
                               className={`bg-white border shadow-sm transition-all duration-200 ${highlightedSeatId === seatId ? 'border-primary border-2 ring-2 ring-primary/30' : 'border-gray-400'}`}
                               style={{
-                                width: '24px',
-                                height: '24px',
+                                width: '20px',
+                                height: '20px',
                                 transform: `translate(-50%, -50%) rotate(${position.rotation}deg)`,
                                 borderTopLeftRadius: '0px',
                                 borderTopRightRadius: '0px',
-                                borderBottomLeftRadius: '12px',
-                                borderBottomRightRadius: '12px',
+                                borderBottomLeftRadius: '10px',
+                                borderBottomRightRadius: '10px',
                                 borderWidth: highlightedSeatId === seatId ? '2px' : '1.5px',
                                 backgroundColor: highlightedSeatId === seatId ? '#f0f9ff' : '#ffffff',
                               }}
@@ -1049,40 +1095,36 @@ export default function Home() {
                     {/* Table - Circle or Rectangle */}
                     {table.type === "circle" ? (
                       <div 
-                        className="absolute bg-white border-2 border-gray-400 rounded-full flex items-center justify-center shadow-md"
+                        className="absolute rounded-full bg-white border-2 border-gray-400 flex flex-col items-center justify-center shadow-md"
                         style={{
-                          width: '100px',
-                          height: '100px',
+                          width: '80px',
+                          height: '80px',
                           left: '0',
                           top: '0',
                           transform: 'translate(-50%, -50%)',
-                          zIndex: 10,
                           backgroundColor: getTableColor(table.id),
-                          borderColor: '#333333',
                         }}
                       >
-                        <div className="text-center">
-                          <div className="font-medium text-gray-700">{table.name}</div>
-                          <div className="text-4xl font-bold text-gray-800">{table.seats}</div>
+                        <div className="flex flex-col items-center justify-center w-full h-full">
+                          <div className="font-medium text-gray-700 text-xs">{table.name}</div>
+                          <div className="text-3xl font-bold text-gray-800">{table.seats}</div>
                         </div>
                       </div>
                     ) : (
                       <div 
-                        className="absolute bg-white border-2 border-gray-400 flex items-center justify-center shadow-md"
+                        className="absolute bg-white border-2 border-gray-400 flex flex-col items-center justify-center shadow-md"
                         style={{
-                          width: `${table.width || 80}px`,
-                          height: `${table.height || 160}px`,
+                          width: `${table.width || 70}px`,
+                          height: `${table.height || 140}px`,
                           left: '0',
                           top: '0',
                           transform: 'translate(-50%, -50%)',
-                          zIndex: 10,
                           backgroundColor: getTableColor(table.id),
-                          borderColor: '#333333',
                         }}
                       >
-                        <div className="text-center">
-                          <div className="font-medium text-gray-700">{table.name}</div>
-                          <div className="text-4xl font-bold text-gray-800">{table.seats}</div>
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="font-medium text-gray-700 text-xs">{table.name}</div>
+                          <div className="text-3xl font-bold text-gray-800">{table.seats}</div>
                         </div>
                       </div>
                     )}
@@ -1182,8 +1224,6 @@ export default function Home() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <div className="sonner-toast-container"></div>
     </div>
   );
 }

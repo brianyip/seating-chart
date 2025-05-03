@@ -10,7 +10,14 @@ if (typeof window !== 'undefined') {
   
   if (supabaseUrl && supabaseAnonKey) {
     try {
-      supabase = createClient(supabaseUrl, supabaseAnonKey);
+      supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        realtime: {
+          // Enable realtime functionality
+          params: {
+            eventsPerSecond: 10
+          }
+        }
+      });
       console.log('Supabase client initialized successfully');
     } catch (error) {
       console.error('Error initializing Supabase client:', error);
@@ -48,6 +55,11 @@ function createDummyClient(): SupabaseClient {
         eq: () => Promise.resolve({ data: null, error: { message: 'Dummy client used' } })
       })
     }),
+    channel: () => ({
+      on: () => ({ subscribe: () => ({}) }),
+      subscribe: () => ({})
+    }),
+    removeChannel: () => Promise.resolve(),
     // Add other required methods as needed
   } as unknown as SupabaseClient;
 }
