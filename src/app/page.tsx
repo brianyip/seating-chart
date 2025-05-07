@@ -18,7 +18,9 @@ import {
   Unlock,
   Search,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Grid,
+  AlertTriangle
 } from "lucide-react";
 import {
   Tooltip,
@@ -27,6 +29,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getLatestArrangement, saveArrangement } from '@/lib/db';
+import { guestListData } from '@/data/guests';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Define the Guest type
 interface Guest {
@@ -162,174 +176,7 @@ const getTableColor = (tableId: string) => {
   return `hsl(${hue}, 70%, 95%)`; // Light pastel color
 };
 
-// Guest list data
-const guestListData = [
-  "Julia Lew",
-  "Brandon Lew",
-  "Miles Schlenker",
-  "Will Hart",
-  "Spencer Nelson",
-  "Elizabeth Nelson",
-  "David Ha",
-  "Janet Ha",
-  "Faith Choi",
-  "Dina Chang",
-  "Daniel Chae",
-  "Sarah Pak",
-  "Chris Kim",
-  "Charlotte Cheng",
-  "Sharon Bahng",
-  "Brian Chung",
-  "Ethan Cheng",
-  "Jae Choi",
-  "Daisy Velarde",
-  "Alex Wada",
-  "Danika Banh",
-  "Dillion Banh",
-  "Ashley Lee",
-  "Candice Matsumara",
-  "Songi Park",
-  "Antonio Park",
-  "Peter Park",
-  "Rellia Jung",
-  "Junyong Lee",
-  "Rubin Lee",
-  "Ruan Lee",
-  "Ruhyuk Lee",
-  "Youja Kim",
-  "Hyoungun Kang",
-  "Juyong Kang",
-  "Susie Shin",
-  "Sam Shin",
-  "Hera Lee",
-  "Howard Kwon",
-  "Semi Kim",
-  "James Oh",
-  "Royce Oh",
-  "Dave An",
-  "Colleen Song",
-  "Logan Park",
-  "Eugenia Park",
-  "Andrew Wong",
-  "Lydia Ko",
-  "Christian Castillo",
-  "Angeles Castillo",
-  "Darryl Bobbie",
-  "Anna Kuo",
-  "Austin Benzinger",
-  "Bri Benzinger",
-  "Hans Hinebaugh",
-  "Casey Harrison",
-  "Mishan Rambukwella",
-  "James Soehardjono",
-  "Steven Hunt",
-  "Brent Yerkes",
-  "Nathan Yanaga",
-  "Nozomi Yanaga",
-  "Audrey Kwok",
-  "Jacklyn Kwok",
-  "Christopher Kwok",
-  "Jessica Moore",
-  "Ryan Moore",
-  "Stephanie Fong",
-  "Julie Strickland",
-  "Amy Wang",
-  "Erica Wu",
-  "Albert Wan",
-  "Allison Wan",
-  "Archana Bettadapur",
-  "Hailey Pink",
-  "Maria Schriber",
-  "Jen Rodriguez",
-  "Julia Aguirre",
-  "Kimberly Soy Tamkin",
-  "John Tamkin",
-  "Liz Walls",
-  "Joycelyn Yip",
-  "Anand Ganapathy",
-  "Yuta Ando",
-  "Patrick Chi",
-  "Sungeun Chi",
-  "Grace Min",
-  "Raymond Kwon",
-  "Pauline Park",
-  "Alex Chi",
-  "Stuart Mar",
-  "William Yu",
-  "Esther Kim",
-  "Miya Joo",
-  "Patrick Hua",
-  "Katie Kim",
-  "Jacqueline Kim",
-  "Jessica Cha",
-  "Justice Epps",
-  "Matthew Epps",
-  "Marc Jimenez",
-  "Camille Tse",
-  "Keyon Vafa",
-  "Katherine Chen",
-  "Elena Schneider",
-  "Tracy Fong",
-  "Francis Miranda",
-  "Teddy Fong",
-  "Tiffany Fong",
-  "Daina Cheng",
-  "Edmond Cheng",
-  "Patricia Wong Kim",
-  "Austin Kim",
-  "Tiffany Cheng Zappia",
-  "Eduardo Zappia",
-  "Maryann Fong",
-  "Daniel Fong",
-  "Kevin Wong",
-  "Nancy Wong",
-  "Frank Geraci",
-  "Joanne Geraci",
-  "Richard Chernick",
-  "Karla Chernick",
-  "Candace Cooper",
-  "Erin Becks",
-  "Julia Yip",
-  "Andrew Yip",
-  "Daiyee Hui",
-  "George Hui",
-  "May Fong",
-  "Dan Banh",
-  "Ellen Banh",
-  "Yeoman Chan",
-  "Cherry Chan",
-  "Jet Long",
-  "Daisy Kwok",
-  "John Kwok",
-  "Grandma Kwok",
-  "Li Qin",
-  "Shiliang Qin",
-  "Desai Wu",
-  "Ernie Chen",
-  "Kay Chen",
-  "Annie Chen",
-  "Garbo Au Yeung",
-  "Alan Au Yeung",
-  "Susan Leung",
-  "Vanessa Esparza",
-  "Paul Esparza",
-  "Vanessa Miranda",
-  "Pearl Pon",
-  "Rob Pon",
-  "Margaret Chow",
-  "Gracie Chow",
-  "Rosalie Cho",
-  "Evan Chen",
-  "Elly Chen",
-  "Aria Qin",
-  "Miles Qin",
-  "Elias Chen",
-  "Elijah Moore",
-  "Cameron Fong",
-  "Lolo Fong",
-  "Sophie Fong",
-  "Jiong Cheng"
-];
+// Guest list data is imported from @/data/guests
 
 // Add this configuration to make the page client-side only
 export const dynamic = 'force-dynamic';
@@ -346,10 +193,20 @@ export default function Home() {
   const [highlightedSeatId, setHighlightedSeatId] = useState<string | null>(null);
   const [tablesLocked, setTablesLocked] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const gridSize = 20; // Fixed grid size in pixels
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  
+  // Canvas panning state
+  const [isPanning, setIsPanning] = useState(false);
+  const [canvasPosition, setCanvasPosition] = useState({ x: 0, y: 0 });
+  const [startPanPosition, setStartPanPosition] = useState({ x: 0, y: 0 });
+  const [canvasScale, setCanvasScale] = useState(1);
+  // Track visible tables for dynamic canvas boundaries
+  const [visibleBounds, setVisibleBounds] = useState({ minX: -2000, minY: -2000, maxX: 2000, maxY: 2000 });
   
   // Initialize guest list from data or load from Supabase
   useEffect(() => {
@@ -603,47 +460,133 @@ export default function Home() {
     if (tablesLocked) return;
     
     e.preventDefault();
+    e.stopPropagation(); // Prevent event from bubbling to canvas
     setIsDragging(true);
     setCurrentTable(tableId);
+    setSelectedTableId(tableId); // Set the selected table
   };
 
-  // Handle mouse move
+  // Handle mouse move for table dragging only (panning removed)
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !currentTable || !canvasRef.current) return;
+    // Handle table dragging
+    if (isDragging && currentTable && canvasRef.current) {
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      
+      // Calculate position relative to the canvas and adjust for panning and scaling
+      let x = (e.clientX - canvasRect.left - canvasPosition.x) / canvasScale;
+      let y = (e.clientY - canvasRect.top - canvasPosition.y) / canvasScale;
+      
+      // Get current table dimensions
+      const tableObj = tables.find(t => t.id === currentTable);
+      if (!tableObj) return;
+      
+      // Always snap to invisible 20px grid
+      x = Math.round(x / gridSize) * gridSize;
+      y = Math.round(y / gridSize) * gridSize;
+      
+      // Update the table position
+      setTables(tables.map(table => 
+        table.id === currentTable 
+          ? { ...table, x, y } 
+          : table
+      ));
+      
+      // Update visible bounds if table is moved beyond current bounds
+      updateVisibleBounds(x, y);
+    }
     
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    let x = e.clientX - canvasRect.left;
-    let y = e.clientY - canvasRect.top;
-    
-    // Get current table dimensions
-    const tableObj = tables.find(t => t.id === currentTable);
-    if (!tableObj) return;
-    
-    // Calculate table radius/dimensions for boundary constraints
-    const tableRadius = tableObj.type === "circle" 
-      ? 40  // Default radius for circle tables
-      : Math.max((tableObj.width || 70) / 2, (tableObj.height || 140) / 2);
-    
-    // Apply boundary constraints
-    const padding = tableRadius + 20; // Extra padding to keep tables fully visible
-    
-    // Constrain x within the canvas boundaries
-    x = Math.max(padding, Math.min(canvasRect.width - padding, x));
-    
-    // Constrain y within the canvas boundaries
-    y = Math.max(padding, Math.min(canvasRect.height - padding, y));
-    
-    setTables(tables.map(table => 
-      table.id === currentTable 
-        ? { ...table, x, y } 
-        : table
-    ));
+    // Canvas panning with mouse drag has been removed
+    // The canvas can now only be panned using trackpad or mouse wheel
   };
 
   // Handle mouse up
   const handleMouseUp = () => {
     setIsDragging(false);
     setCurrentTable(null);
+    setIsPanning(false);
+    // Note: We don't clear selectedTableId here to keep the selection visible
+  };
+  
+  // Handle canvas mouse down - now only used to clear table selection
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    // If clicking on empty canvas while a table is selected, clear the selection
+    if (e.button === 0 && !isDragging) {
+      setSelectedTableId(null);
+    }
+  };
+  
+  // Handle wheel events for panning with trackpad/mouse wheel
+  const handleWheel = (e: React.WheelEvent) => {
+    // Prevent default scrolling behavior
+    e.preventDefault();
+    
+    // Only handle wheel events if not dragging a table and no table is selected
+    if (isDragging || isPanning || selectedTableId) return;
+    
+    // Adjust the canvas position based on wheel delta
+    // For trackpads, this provides a natural panning experience
+    const deltaX = e.deltaX;
+    const deltaY = e.deltaY;
+    
+    // Adjust sensitivity based on canvas scale
+    const sensitivity = 1 / canvasScale;
+    
+    setCanvasPosition({
+      x: canvasPosition.x - deltaX * sensitivity,
+      y: canvasPosition.y - deltaY * sensitivity
+    });
+    
+    // Log panning for debugging
+    console.log('Panning with wheel:', { deltaX, deltaY, newPosition: {
+      x: canvasPosition.x - deltaX * sensitivity,
+      y: canvasPosition.y - deltaY * sensitivity
+    }});
+  };
+  
+  // Update visible bounds based on table positions or viewport changes
+  const updateVisibleBounds = (x?: number, y?: number) => {
+    setVisibleBounds(prev => {
+      // Create a buffer around the current bounds
+      const buffer = 500;
+      
+      // If x and y are provided (table being dragged), check if they're outside current bounds
+      if (x !== undefined && y !== undefined) {
+        return {
+          minX: Math.min(prev.minX, x - buffer),
+          minY: Math.min(prev.minY, y - buffer),
+          maxX: Math.max(prev.maxX, x + buffer),
+          maxY: Math.max(prev.maxY, y + buffer)
+        };
+      }
+      
+      // Otherwise, update based on all table positions
+      if (tables.length > 0) {
+        const tableXPositions = tables.map(t => t.x);
+        const tableYPositions = tables.map(t => t.y);
+        
+        const minTableX = Math.min(...tableXPositions);
+        const maxTableX = Math.max(...tableXPositions);
+        const minTableY = Math.min(...tableYPositions);
+        const maxTableY = Math.max(...tableYPositions);
+        
+        return {
+          minX: Math.min(prev.minX, minTableX - buffer),
+          minY: Math.min(prev.minY, minTableY - buffer),
+          maxX: Math.max(prev.maxX, maxTableX + buffer),
+          maxY: Math.max(prev.maxY, maxTableY + buffer)
+        };
+      }
+      
+      return prev;
+    });
+  };
+  
+  // Reset canvas view to center
+  const resetCanvasView = () => {
+    setCanvasPosition({ x: 0, y: 0 });
+    setCanvasScale(1);
+    // Reset visible bounds to default
+    setVisibleBounds({ minX: -2000, minY: -2000, maxX: 2000, maxY: 2000 });
   };
 
   // Open dialog to edit table
@@ -710,18 +653,79 @@ export default function Home() {
     alert.info("Table deleted", `Table and ${tableSeats.length} seats have been removed`);
   };
 
+  // State to track the currently dragged guest name
+  const [draggedGuestName, setDraggedGuestName] = useState<string>('');
+  
+  // State to track mouse position during drag
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // State to track if we're currently dragging
+  const [isDraggingGuest, setIsDraggingGuest] = useState(false);
+  
+  // Update mouse position on mouse move
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingGuest) {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      }
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isDraggingGuest]);
+  
   // Handle guest drag start
   const handleGuestDragStart = (e: React.DragEvent, guestId: string) => {
-    e.dataTransfer.setData('text/plain', guestId);
+    // Set the data being dragged - this is critical for the drop to work
+    e.dataTransfer.setData('application/json', JSON.stringify({ guestId }));
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Find the guest data
+    const guest = guests.find(g => g.id === guestId);
+    if (!guest) return;
+    
+    // Set the dragged guest name and initial mouse position
+    setDraggedGuestName(guest.name);
+    setMousePosition({ x: e.clientX, y: e.clientY });
+    setIsDraggingGuest(true);
+    
+    // Use a transparent image as the drag image
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // Transparent 1x1 pixel
+    e.dataTransfer.setDragImage(img, 0, 0);
   };
 
   // Handle guest drag end
   const handleGuestDragEnd = () => {
+    // Reset dragging state
+    setIsDraggingGuest(false);
+    setDraggedGuestName('');
   };
+  
+  // Handle drag over for the entire document
+  useEffect(() => {
+    const handleDragOver = (e: DragEvent) => {
+      // Prevent default to allow drop
+      e.preventDefault();
+      
+      // Update mouse position during drag
+      if (isDraggingGuest) {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      }
+    };
+    
+    document.addEventListener('dragover', handleDragOver);
+    return () => {
+      document.removeEventListener('dragover', handleDragOver);
+    };
+  }, [isDraggingGuest]);
 
   // Handle seat drag over
   const handleSeatDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     // Get the seat ID from the current target
     const seatId = e.currentTarget.getAttribute('data-seat-id');
     if (seatId) {
@@ -739,8 +743,17 @@ export default function Home() {
     e.preventDefault();
     setHighlightedSeatId(null);
     
-    const guestId = e.dataTransfer.getData('text/plain');
-    if (!guestId) return;
+    // Reset dragging state immediately
+    setIsDraggingGuest(false);
+    setDraggedGuestName('');
+    
+    // Get the dragged data
+    const dataString = e.dataTransfer.getData('application/json');
+    if (!dataString) return;
+    
+    try {
+      const { guestId } = JSON.parse(dataString);
+      if (!guestId) return;
     
     // Check if the guest is already assigned to another seat
     const currentSeat = seats.find(seat => seat.guestId === guestId);
@@ -798,6 +811,15 @@ export default function Home() {
         }
       }
     }
+    } catch (error) {
+      console.error('Error parsing drag data:', error);
+    }
+  };
+
+  // Helper function to get last name - defined inside component to avoid dependency issues
+  const getLastNameForSort = (fullName: string) => {
+    const parts = fullName.split(' ');
+    return parts.length > 1 ? parts[parts.length - 1] : '';
   };
 
   // Get unassigned guests
@@ -813,14 +835,22 @@ export default function Home() {
     const unassignedGuestsList = guests.filter(guest => !assignedGuestIds.has(guest.id));
     
     // Apply search filter if there's a query
+    let filteredGuests;
     if (searchQuery.trim() === '') {
-      return unassignedGuestsList;
+      filteredGuests = unassignedGuestsList;
+    } else {
+      const query = searchQuery.toLowerCase().trim();
+      filteredGuests = unassignedGuestsList.filter(guest => 
+        guest.name.toLowerCase().includes(query)
+      );
     }
     
-    const query = searchQuery.toLowerCase().trim();
-    return unassignedGuestsList.filter(guest => 
-      guest.name.toLowerCase().includes(query)
-    );
+    // Sort by last name
+    return [...filteredGuests].sort((a, b) => {
+      const lastNameA = getLastNameForSort(a.name).toLowerCase();
+      const lastNameB = getLastNameForSort(b.name).toLowerCase();
+      return lastNameA.localeCompare(lastNameB);
+    });
   }, [guests, seats, searchQuery]);
 
   // Handle Clear All button click - now just clears guest assignments
@@ -837,157 +867,196 @@ export default function Home() {
     alert.info("All guests unassigned", "All guests have been returned to the unassigned list");
   };
 
-  // Add event listeners for mouse up outside the canvas
+  // Initialize the canvas with tables in the center of the view
+  useEffect(() => {
+    // Set initial canvas position to center the content
+    const centerX = 250;
+    const centerY = 250;
+    setCanvasPosition({ x: centerX, y: centerY });
+    
+    // Add a default table if none exist
+    if (tables.length === 0) {
+      addCircleTable();
+    } else {
+      // Update visible bounds based on existing tables
+      updateVisibleBounds();
+    }
+    
+    // Log initial setup
+    console.log('Canvas initialized with position:', { x: centerX, y: centerY });
+  }, []);
+  
+  // Update visible bounds when tables change
+  useEffect(() => {
+    if (tables.length > 0) {
+      updateVisibleBounds();
+    }
+  }, [tables.length]);
+  
+  // Add event listeners for mouse up outside the canvas and prevent browser back/forward navigation
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (isDragging) {
         setIsDragging(false);
         setCurrentTable(null);
       }
+      if (isPanning) {
+        setIsPanning(false);
+      }
+    };
+    
+    // Prevent browser back/forward navigation when using horizontal swipe gestures
+    const preventBrowserNavigation = (e: WheelEvent) => {
+      // Check if event target is within our canvas
+      if (canvasRef.current?.contains(e.target as Node)) {
+        // Always prevent default to stop browser navigation
+        e.preventDefault();
+        
+        // Handle wheel event for panning
+        const deltaX = e.deltaX;
+        const deltaY = e.deltaY;
+        const sensitivity = 1 / canvasScale;
+        
+        setCanvasPosition(prev => ({
+          x: prev.x - deltaX * sensitivity,
+          y: prev.y - deltaY * sensitivity
+        }));
+        
+        // Log wheel event for debugging
+        console.log('Wheel event handled', { deltaX, deltaY });
+      }
     };
 
     window.addEventListener('mouseup', handleGlobalMouseUp);
+    // Use passive: false to allow preventDefault in the wheel event handler
+    window.addEventListener('wheel', preventBrowserNavigation, { passive: false });
+    
     return () => {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('wheel', preventBrowserNavigation);
     };
-  }, [isDragging]);
+  }, [isDragging, isPanning]);
 
   // Get first name of a guest
   const getFirstName = (fullName: string) => {
     return fullName.split(' ')[0];
+  };
+  
+  // Get last name of a guest
+  const getLastName = (fullName: string) => {
+    const parts = fullName.split(' ');
+    return parts.length > 1 ? parts[parts.length - 1] : '';
+  };
+  
+  // Format name as "First Name + first character of Last Name"
+  const getFormattedName = (fullName: string) => {
+    const firstName = getFirstName(fullName);
+    const lastName = getLastName(fullName);
+    
+    if (lastName) {
+      return `${firstName} ${lastName.charAt(0)}`;
+    }
+    
+    return firstName;
   };
 
   // Use our new alert notification system
   const alert = useAlertNotification();
 
   return (
-    <div className="min-h-screen p-4 grid grid-cols-1 md:grid-cols-[300px_1fr] lg:grid-cols-[320px_1fr] gap-4">
-      {/* Guest List Sidebar */}
-      <div className="w-full flex flex-col">
-        <Card className="flex-1">
-          <CardHeader className="pb-3">
+    <div className="flex h-screen overflow-hidden">
+      {/* Drag ghost element */}
+      {isDraggingGuest && draggedGuestName && (
+        <div 
+          className="fixed px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-full shadow-md border border-primary/20 pointer-events-none z-[9999] whitespace-nowrap"
+          style={{ 
+            left: `${mousePosition.x + 15}px`, 
+            top: `${mousePosition.y + 15}px`,
+            transform: 'translate(0, 0)' // Force GPU acceleration
+          }}
+        >
+          {draggedGuestName}
+        </div>
+      )}
+      {/* Guest List - Fixed Position */}
+      <div className="fixed left-0 top-0 w-[280px] h-full bg-white border-r z-10 overflow-y-auto">
+        <Card className="border-0 rounded-none h-full">
+          <CardHeader>
             <CardTitle>Guest List</CardTitle>
             <CardDescription>
               {filteredUnassignedGuests.length} unassigned guests
             </CardDescription>
-            <div className="relative mt-2">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search guests..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
-            </div>
+
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[calc(100vh-250px)] md:h-[calc(100vh-200px)]">
-              <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search guests..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              
+              <ScrollArea className="h-[calc(100vh-220px)]">
+                <div className="space-y-2">
                 {filteredUnassignedGuests.length > 0 ? (
-                  filteredUnassignedGuests.map(guest => (
-                    <div
-                      key={guest.id}
-                      className="p-2 bg-white border rounded-md cursor-move hover:bg-gray-50"
-                      draggable
-                      onDragStart={(e) => handleGuestDragStart(e, guest.id)}
-                      onDragEnd={handleGuestDragEnd}
-                    >
-                      {guest.name}
-                    </div>
-                  ))
+                  <div className="space-y-1.5">
+                    {filteredUnassignedGuests.map(guest => (
+                      <div key={guest.id} className="flex items-center w-full">
+                        <Badge
+                          variant="outline"
+                          className="w-full px-3 py-1.5 text-sm cursor-move hover:bg-primary/10 transition-colors justify-between flex items-center"
+                          draggable
+                          onDragStart={(e) => handleGuestDragStart(e, guest.id)}
+                          onDragEnd={handleGuestDragEnd}
+                        >
+                          <span className="truncate">{guest.name}</span>
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="p-2 text-gray-500 text-center">
+                  <div className="text-xs text-muted-foreground text-center py-2">
                     {searchQuery ? 'No matching guests found' : 'All guests are seated'}
                   </div>
                 )}
-              </div>
-            </ScrollArea>
+                </div>
+              </ScrollArea>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
-      <main className="w-full space-y-6 flex flex-col">
-        <Card className="flex-1 flex flex-col">
-          <CardHeader>
-            <CardTitle>Christina + Brian Wedding</CardTitle>
-            <CardDescription>Drag and drop tables and guests to seats.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col">
-            <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-4">
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={addCircleTable}>Add Circle Table</Button>
-                <Button onClick={addRectangleTable}>Add Rectangle Table</Button>
-              </div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex items-center space-x-2 mr-2">
-                  <Switch 
-                    id="lock-tables" 
-                    checked={tablesLocked}
-                    onCheckedChange={setTablesLocked}
-                  />
-                  <Label htmlFor="lock-tables" className="flex items-center cursor-pointer">
-                    {tablesLocked ? 
-                      <Lock className="h-4 w-4 mr-1" /> : 
-                      <Unlock className="h-4 w-4 mr-1" />
-                    }
-                    {tablesLocked ? "Tables Locked" : "Tables Unlocked"}
-                  </Label>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" onClick={handleSaveArrangement} disabled={isLoading}>
-                          {isLoading ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                          )}
-                          Save
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Save your seating arrangement</p>
-                        {lastSaved && (
-                          <p className="text-xs text-gray-500">Last saved: {lastSaved.toLocaleTimeString()}</p>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" onClick={forceRefreshArrangement} disabled={isLoading}>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Refresh
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Refresh the seating arrangement from the cloud</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  {isAutoSaving && (
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      Saving...
-                    </div>
-                  )}
-                  <Button variant="outline" onClick={handleClearAll}>Clear Guests</Button>
-                </div>
-              </div>
-            </div>
+      {/* Main Content Area with Canvas */}
+      <main className="absolute inset-0 ml-[280px] mr-[280px] overflow-hidden">
             
-            {/* Canvas for dragging tables */}
-            <div 
-              ref={canvasRef}
-              className="relative flex-1 border border-gray-200 rounded-lg bg-gray-50 min-h-[50vh] md:min-h-[60vh]"
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-            >
-              {tables.map((table) => {
+        {/* Canvas for floor plan */}
+        <div 
+          ref={canvasRef}
+          className={`w-full h-full bg-gray-50 overflow-hidden ${selectedTableId ? 'cursor-default' : 'cursor-move'}`}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+          // Prevent context menu to avoid interference with panning
+          onContextMenu={(e) => e.preventDefault()}
+        >
+              {/* Inner canvas container with transform for panning */}
+              <div
+                className="absolute"
+                style={{
+                  width: `${visibleBounds.maxX - visibleBounds.minX + 4000}px`,
+                  height: `${visibleBounds.maxY - visibleBounds.minY + 4000}px`,
+                  transform: `translate(${canvasPosition.x}px, ${canvasPosition.y}px) scale(${canvasScale})`,
+                  transformOrigin: '0 0'
+                }}
+              >
+                {/* Grid removed, but snapping still active */}
+                {tables.map((table) => {
                 // Generate seat positions based on table type
                 const seatPositions = table.type === "circle" 
                   ? generateCircularSeatPositions(table.seats)
@@ -1000,16 +1069,31 @@ export default function Home() {
                 return (
                   <div
                     key={table.id}
-                    className="absolute cursor-move"
+                    className={`absolute ${!tablesLocked ? 'cursor-move' : 'cursor-default'}`}
                     style={{
                       left: `${table.x}px`,
                       top: `${table.y}px`,
                       transform: 'translate(-50%, -50%)',
-                      touchAction: 'none',
+                      touchAction: 'none'
                     }}
                     onMouseDown={(e) => handleMouseDown(e, table.id)}
                     onDoubleClick={() => openEditDialog(table)}
                   >
+                    {/* Selection box */}
+                    {selectedTableId === table.id && (
+                      <div 
+                        className="absolute border-2 border-primary rounded-lg pointer-events-none"
+                        style={{
+                          width: table.type === "circle" ? '96px' : `${(table.width || 70) + 16}px`,
+                          height: table.type === "circle" ? '96px' : `${(table.height || 140) + 16}px`,
+                          left: '0',
+                          top: '0',
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: 20,
+                          boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.3)',
+                        }}
+                      />
+                    )}
                     {/* Seats */}
                     {seatPositions.map((position, index) => {
                       // Find the corresponding seat data
@@ -1064,7 +1148,7 @@ export default function Home() {
                                         padding: '1px 4px'
                                       }}
                                     >
-                                      {getFirstName(guest.name)}
+                                      {getFormattedName(guest.name)}
                                     </Badge>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -1108,8 +1192,8 @@ export default function Home() {
                         }}
                       >
                         <div className="flex flex-col items-center justify-center w-full h-full">
-                          <div className="font-medium text-gray-700 text-xs">{table.name}</div>
-                          <div className="text-3xl font-bold text-gray-800">{table.seats}</div>
+                          <div className="font-medium text-gray-700 text-xs">{table.seats} people</div>
+                          <div className="text-3xl font-bold text-gray-800">{table.name.replace(/Table /i, '')}</div>
                         </div>
                       </div>
                     ) : (
@@ -1125,18 +1209,145 @@ export default function Home() {
                         }}
                       >
                         <div className="flex flex-col items-center justify-center">
-                          <div className="font-medium text-gray-700 text-xs">{table.name}</div>
-                          <div className="text-3xl font-bold text-gray-800">{table.seats}</div>
+                          <div className="font-medium text-gray-700 text-xs">{table.seats} people</div>
+                          <div className="text-3xl font-bold text-gray-800">{table.name.replace(/Table /i, '')}</div>
                         </div>
                       </div>
                     )}
                   </div>
                 );
               })}
+              </div>
+        </div>
+      </main>
+      
+      {/* Controls Panel - Fixed Position */}
+      <div className="fixed right-0 top-0 w-[280px] h-full bg-white border-l z-10 overflow-y-auto">
+        <Card className="border-0 rounded-none h-full">
+          <CardHeader>
+            <CardTitle>Controls</CardTitle>
+            <CardDescription>
+              Manage your seating arrangement
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="tables-locked" className="flex items-center gap-2 cursor-pointer">
+                  <span>{tablesLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</span>
+                  <span>Lock Tables</span>
+                </Label>
+                <Switch
+                  id="tables-locked"
+                  checked={tablesLocked}
+                  onCheckedChange={setTablesLocked}
+                />
+              </div>
+              
+
+              
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  onClick={addCircleTable}
+                  disabled={isLoading}
+                >
+                  Add Circle Table
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  onClick={addRectangleTable}
+                  disabled={isLoading}
+                >
+                  Add Rectangle Table
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  onClick={resetCanvasView}
+                  disabled={isLoading}
+                >
+                  Reset View
+                </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start" 
+                      disabled={isLoading}
+                    >
+                      Clear All Assignments
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-500" />
+                        Are you sure you want to clear all assignments?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action will remove all guests from their assigned seats and return them to the unassigned list.
+                        This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleClearAll}>Clear All</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                
+                <Button 
+                  variant="default" 
+                  className="w-full justify-start" 
+                  onClick={handleSaveArrangement}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Arrangement
+                    </>
+                  )}
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  onClick={forceRefreshArrangement}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh from Cloud
+                </Button>
+              </div>
+              
+              {isAutoSaving && (
+                <div className="text-xs text-muted-foreground flex items-center">
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  Auto-saving...
+                </div>
+              )}
+              
+              {lastSaved && (
+                <div className="text-xs text-muted-foreground">
+                  Last saved: {lastSaved.toLocaleTimeString()}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
-      </main>
+      </div>
 
       {/* Edit Table Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
