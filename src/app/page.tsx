@@ -205,6 +205,7 @@ export default function Home() {
   const [canvasPosition, setCanvasPosition] = useState({ x: 0, y: 0 });
   const [startPanPosition, setStartPanPosition] = useState({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
+  const [isZooming, setIsZooming] = useState(false);
   // Track visible tables for dynamic canvas boundaries
   const [visibleBounds, setVisibleBounds] = useState({ minX: -2000, minY: -2000, maxX: 2000, maxY: 2000 });
   
@@ -535,12 +536,58 @@ export default function Home() {
       x: canvasPosition.x - deltaX * sensitivity,
       y: canvasPosition.y - deltaY * sensitivity
     });
+  };
+  
+
+  
+  // Keyboard shortcuts for zoom
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if not in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Zoom in with + or =
+      if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        zoomToScale(canvasScale * 1.2);
+      }
+      
+      // Zoom out with -
+      if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        zoomToScale(canvasScale / 1.2);
+      }
+      
+      // Reset zoom with 0
+      if (e.key === '0' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        resetCanvasView();
+      }
+    };
     
-    // Log panning for debugging
-    console.log('Panning with wheel:', { deltaX, deltaY, newPosition: {
-      x: canvasPosition.x - deltaX * sensitivity,
-      y: canvasPosition.y - deltaY * sensitivity
-    }});
+    // Add event listeners
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [canvasScale, canvasPosition]);
+  
+  // Zoom to a specific scale
+  const zoomToScale = (newScale: number) => {
+    // Constrain the scale
+    newScale = Math.min(Math.max(newScale, 0.1), 10);
+    
+    // Update the canvas scale
+    setCanvasScale(newScale);
+    setIsZooming(true);
+    
+    // Show zoom indicator briefly
+    setTimeout(() => {
+      setIsZooming(false);
+    }, 1000);
   };
   
   // Update visible bounds based on table positions or viewport changes
@@ -587,6 +634,11 @@ export default function Home() {
     setCanvasScale(1);
     // Reset visible bounds to default
     setVisibleBounds({ minX: -2000, minY: -2000, maxX: 2000, maxY: 2000 });
+    // Show zoom indicator briefly
+    setIsZooming(true);
+    setTimeout(() => {
+      setIsZooming(false);
+    }, 1000);
   };
 
   // Open dialog to edit table
@@ -1045,6 +1097,49 @@ export default function Home() {
           // Prevent context menu to avoid interference with panning
           onContextMenu={(e) => e.preventDefault()}
         >
+          {/* Zoom indicator - only visible during zoom */}
+          {isZooming && (
+            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-3 py-1 rounded-md opacity-70 text-sm z-50">
+              {Math.round(canvasScale * 100)}%
+            </div>
+          )}
+          
+          {/* Zoom controls */}
+          <div className="absolute bottom-4 right-4 flex flex-col gap-2 bg-white rounded-md shadow-md p-1 z-50">
+            <button 
+              className="p-2 hover:bg-gray-100 rounded"
+              onClick={() => zoomToScale(canvasScale * 1.2)}
+              title="Zoom In (+ key)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+            </button>
+            <button 
+              className="p-2 hover:bg-gray-100 rounded"
+              onClick={() => zoomToScale(canvasScale / 1.2)}
+              title="Zoom Out (- key)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+            </button>
+            <button 
+              className="p-2 hover:bg-gray-100 rounded"
+              onClick={resetCanvasView}
+              title="Reset View (0 key)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+            </button>
+          </div>
               {/* Inner canvas container with transform for panning */}
               <div
                 className="absolute"
